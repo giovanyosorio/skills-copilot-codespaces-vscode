@@ -1,34 +1,29 @@
-// Create web service
-// This file is used to create web service for comments
+// Create web server
+var express = require('express');
+var router = express.Router();
 
-// Import express
-const express = require('express');
-const router = express.Router();
+// Create middleware
+var bodyParser = require('body-parser');
+var parseUrlencoded = bodyParser.urlencoded({ extended: false });
 
-// Import comments model
-const Comments = require('../models/comments');
+// Create Redis client
+var redis = require('redis');
+var client = redis.createClient();
 
-// Import auth
-const auth = require('../middleware/auth');
+// Create routes
+router.route('/')
+    .post(parseUrlencoded, function (request, response) {
+        var comment = request.body;
+        var id = request.params.id;
 
-// Import comments controller
-const CommentsController = require('../controllers/comments');
+        client.lpush('comments', JSON.stringify(comment), function (error, reply) {
+            response.status(201).json(comment);
+        });
+    })
+    .get(function (request, response) {
+        client.lrange('comments', 0, -1, function (error, comments) {
+            response.json(comments.map(JSON.parse));
+        });
+    });
 
-// Create web service
-// Create comment
-router.post('/comment', auth, CommentsController.createComment);
-
-// Get all comments
-router.get('/comments', auth, CommentsController.getComments);
-
-// Get comment by id
-router.get('/comment/:id', auth, CommentsController.getCommentById);
-
-// Update comment
-router.patch('/comment/:id', auth, CommentsController.updateComment);
-
-// Delete comment
-router.delete('/comment/:id', auth, CommentsController.deleteComment);
-
-// Export module
 module.exports = router;
